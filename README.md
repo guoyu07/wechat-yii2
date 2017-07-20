@@ -3,7 +3,12 @@
 ## Install
 `composer require xiankun/wechat-yii2 "@dev" -vvv`
 
-## Usage
+
+
+## 更新中..
+- QyWechat
+
+## QyWechat Usage
 ```
 //wechat应用组件
 'wechat' => [
