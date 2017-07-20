@@ -1,5 +1,5 @@
 <?php
-namespace xiankun\wechat\QyWhcat;
+namespace xiankun\wechat;
 
 use yii\base\Component;
 use yii\base\InvalidParamException;
