@@ -7,10 +7,10 @@ use GuzzleHttp\Client;
 use yii\web\HttpException;
 
 /**
- * Class QyWechat
+ * 企业微信api
  * @package common\components\qywechat
  * @author xiankun.geng<james@lightbeijing.com>
- * @version 1.0
+ * @version 1.2 (现实现了成员登陆、发送信息等功能.)
  * @time 2017-07-17
  */
 class QyWechat extends Component
@@ -21,8 +21,11 @@ class QyWechat extends Component
     /** @const string 企业获取code的URL */
     const WECHAT_OAUTH2_AUTHORIZE_URL = 'https://open.weixin.qq.com/connect/oauth2/authorize';
 
+    /** @const string 企业或服务商网站引导用户进入登录授权页的URL */
+    const WECHAT_LOGIN_PAGE_URL = 'https://qy.weixin.qq.com/cgi-bin/loginpage?corp_id=%s&redirect_uri=%s&usertype=%s';
+
     /** @const string 获取AccessToken的URI */
-    const WECHAT_GET_TOKEN_URI = "cgi-bin/gettoken";
+    const WECHAT_GET_TOKEN_URI = "/cgi-bin/gettoken";
 
     /** @const string 发送消息的URI */
     const WECHAT_SEND_MESSAGE_URI = "/cgi-bin/message/send";
@@ -41,6 +44,9 @@ class QyWechat extends Component
 
     /** @const string 通过media_id获取图片、语音、视频等文的URI */
     const WECHAT_GET_MEDIA_URI = "/cgi-bin/media/get";
+
+    /** @const string 获取企业号登录用户信息的URI */
+    const WECHAT_GET_LOGIN_INFO_URI = "/cgi-bin/service/get_login_info";
 
     /** @const string access_token的缓存键名称 */
     const CACHE_ACCESS_TOKEN_KEY = 'access_token';
@@ -82,7 +88,7 @@ class QyWechat extends Component
             //创建Guzzle客户端
             static::$_guzzle_client = new Client([
                 'base_uri' => self::WECHAT_BASE_URL,
-                'timeout'  => 2.0,
+                'timeout'  => 6.0,
             ]);
         }
 
@@ -139,9 +145,9 @@ class QyWechat extends Component
     {
         if (empty($calledFunction)) throw new InvalidParamException('calledFunction does not exist.');
 
-        $data = json_encode($data);
+        $data = json_encode($data, JSON_UNESCAPED_UNICODE);
 
-        if ($is_access_token) $calledFunction."?access_token=".$this->accessToken;
+        if ($is_access_token) $calledFunction = $calledFunction."?access_token=".$this->accessToken;
 
         $guzzle_response = $this->guzzleClient->request('POST', $calledFunction, [
             'body' => $data
@@ -203,6 +209,62 @@ class QyWechat extends Component
             'access_token' => $result->access_token,
             'expires_in' => $result->expires_in
         ];
+    }
+
+    /**
+     * 获取企业或服务商网站引导用户进入登录授权页
+     * @param null $redirect_uri
+     * @param string $usertype
+     * @return int
+     */
+    public function getLoginPage($redirect_uri = null, $usertype = 'member')
+    {
+        if (empty($redirect_uri)) throw new InvalidParamException('redirect_uri does not exist.');
+        $redirect_uri = urlencode($redirect_uri);
+        return printf(self::WECHAT_LOGIN_PAGE_URL, $this->corpid, $redirect_uri, $usertype);
+    }
+
+    /**
+     * 获取企业号登录用户信息
+     * @param null $auth_code
+     * @return mixed
+     */
+    public function requestGetLoginInfo($auth_code = null)
+    {
+        if (empty($auth_code)) throw new InvalidParamException('auth_code does not exist.');
+
+        return $this->guzzleRequestForPost([
+            'auth_code' => $auth_code,
+        ], self::WECHAT_GET_LOGIN_INFO_URI);
+    }
+
+    /**
+     * 企业获取code
+     * @param null $redirect_uri
+     * @param string $scope
+     * @param int $agentid
+     * @param null $state
+     * @return string
+     */
+    public function getOauth2AuthorizeURL($redirect_uri = null, $scope = 'snsapi_base', $agentid = 0, $state = 'STATE')
+    {
+        if (empty($redirect_uri)) throw new InvalidParamException('redirect_uri does not exist.');
+
+        $redirect_uri = base64_encode($redirect_uri);
+        return self::WECHAT_OAUTH2_AUTHORIZE_URL."?appid=$this->corpid&redirect_uri=$redirect_uri&response_type=code&scope=$scope&agentid=$agentid&state=$state#wechat_redirect";
+    }
+
+    /**
+     * 通过code获得用户详细信息
+     * @param null $code
+     * @return mixed
+     */
+    public function requestGetUserInfo($code = null)
+    {
+        if(empty($user_ticket)) throw new InvalidParamException('code does not exist.');
+
+        $data = ['code' => $code];
+        return $this->guzzleRequestForGet($data, self::WECHAT_GET_AGENT_URI);
     }
 
     /**
@@ -273,35 +335,6 @@ class QyWechat extends Component
     }
 
     /**
-     * 企业获取code
-     * @param null $redirect_uri
-     * @param string $scope
-     * @param int $agentid
-     * @param null $state
-     * @return string
-     */
-    public function getOauth2AuthorizeURL($redirect_uri = null, $scope = 'snsapi_base', $agentid = 0, $state = 'STATE')
-    {
-        if (empty($redirect_uri)) throw new InvalidParamException('redirect_uri does not exist.');
-
-        $redirect_uri = base64_encode($redirect_uri);
-        return self::WECHAT_OAUTH2_AUTHORIZE_URL."?appid=$this->corpid&redirect_uri=$redirect_uri&response_type=code&scope=$scope&agentid=$agentid&state=$state#wechat_redirect";
-    }
-
-    /**
-     * 通过code获得用户详细信息
-     * @param null $code
-     * @return mixed
-     */
-    public function requestGetUserInfo($code = null)
-    {
-        if(empty($user_ticket)) throw new InvalidParamException('code does not exist.');
-
-        $data = ['code' => $code];
-        return $this->guzzleRequestForGet($data, self::WECHAT_GET_AGENT_URI);
-    }
-
-    /**
      * 通过user_ticket获得用户详细信息
      * @param null $user_ticket
      * @return mixed
@@ -326,7 +359,6 @@ class QyWechat extends Component
         if (empty($type)) throw new InvalidParamException('type does not exist.');
 
         return $this->guzzleRequestForPost([
-            'access_token' => $this->accessToken,
             'type' => $type,
             'media' => $media
         ], self::WECHAT_UPLOAD_MEDIA_URI);
@@ -345,3 +377,4 @@ class QyWechat extends Component
         return $this->guzzleRequestForGet($data, self::WECHAT_GET_MEDIA_URI);
     }
 }
+/** End file of QyWechat.php */
