@@ -221,7 +221,7 @@ class QyWechat extends Component
     {
         if (empty($redirect_uri)) throw new InvalidParamException('redirect_uri does not exist.');
         $redirect_uri = urlencode($redirect_uri);
-        return printf(self::WECHAT_LOGIN_PAGE_URL, $this->corpid, $redirect_uri, $usertype);
+        return sprintf(self::WECHAT_LOGIN_PAGE_URL, $this->corpid, $redirect_uri, $usertype);
     }
 
     /**
