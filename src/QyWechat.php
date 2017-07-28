@@ -10,8 +10,8 @@ use yii\web\HttpException;
  * 企业微信api
  * @package common\components\qywechat
  * @author xiankun.geng<james@lightbeijing.com>
- * @version 1.2 (现实现了成员登陆、发送信息等功能.)
- * @time 2017-07-17
+ * @version 1.3 (成员登陆、获取成员信息、上传素材、发送文本/图片/news类型的消息)
+ * @time 2017-07-28
  */
 class QyWechat extends Component
 {
@@ -321,6 +321,32 @@ class QyWechat extends Component
             ],
             'safe' => $safe
         ]);
+    }
+
+    /**
+     * 发送news类型消息
+     * @param  string $touser   成员ID列表（消息接收者，多个接收者用‘|’分隔，最多支持1000个）。特殊情况：指定为@all，则向关注该企业应用的全部成员发送
+     * @param  array $articles  图文消息，一个图文消息支持1到8条图文；title标题，不超过128个字节，超过会自动截断;description描述，
+     * 不超过512个字节，超过会自动截断;url点击后跳转的链接;picurl图文消息的图片链接，支持JPG、PNG格式，较好的效果为大图640*320，小图80*80。如不填，
+     * 在客户端不显示图片
+     * @param  string $toparty  部门ID列表，多个接收者用‘|’分隔，最多支持100个。当touser为@all时忽略本参数
+     * @param  string $agentid  企业应用的id，整型。可在应用的设置页面查看
+     * @link( http://qydev.weixin.qq.com/wiki/index.php?title=%E6%B6%88%E6%81%AF%E7%B1%BB%E5%9E%8B%E5%8F%8A%E6%95%B0%E6%8D%AE%E6%A0%BC%E5%BC%8F#news.E6.B6.88.E6.81.AF, link)
+     * @return mixed
+     */
+    public function sendNews($touser = '@all', $articles = null, $toparty = '@all', $agentid = '0')
+    {
+        $data = [
+            'touser' => $touser,
+            'toparty' => $toparty,
+            'msgtype' => 'news',
+            'agentid' => $agentid,
+            'news' => [
+                'articles' => $articles
+            ],
+        ];
+
+        return $this->requestSendMessage($data);
     }
 
     /**
